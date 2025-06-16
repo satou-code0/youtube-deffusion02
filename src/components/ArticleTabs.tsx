@@ -7,7 +7,6 @@ interface ArticleTabsProps {
   onTabChange: (tab: ArticleType) => void;
   content: ArticleContent | null;
   loading: boolean;
-  onSave: () => void;
 }
 
 export const ArticleTabs: React.FC<ArticleTabsProps> = ({
@@ -15,7 +14,6 @@ export const ArticleTabs: React.FC<ArticleTabsProps> = ({
   onTabChange,
   content,
   loading,
-  onSave,
 }) => {
   const tabs = [
     { id: 'blog', label: 'ブログ記事', icon: FileText, color: 'text-blue-600' },
@@ -286,13 +284,7 @@ ${convertMarkdownToHTML(content[activeTab])}
               <Download className="w-4 h-4" />
               <span>ダウンロード</span>
             </button>
-            <button
-              onClick={onSave}
-              className="flex items-center space-x-2 px-4 py-2 bg-youtube-red text-white rounded-lg hover:bg-red-600 transition-colors"
-            >
-              <Save className="w-4 h-4" />
-              <span>保存</span>
-            </button>
+
           </div>
         )}
       </div>

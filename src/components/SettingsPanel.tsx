@@ -1,43 +1,71 @@
 import React, { useState, useEffect } from 'react';
 import { X, Key, Save, Eye, EyeOff } from 'lucide-react';
 import { ApiKeys } from '../types';
-import { saveApiKeys, loadApiKeys } from '../utils/storage';
+import { saveApiKeys, getApiKeys, deleteApiKeys, signOut } from '../services/authService';
 
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (keys: ApiKeys) => void;
+  keys: ApiKeys;
+  onKeysChange: (keys: ApiKeys) => void;
 }
 
-export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose, onSave }) => {
-  const [keys, setKeys] = useState<ApiKeys>({ openai: '', youtube: '' });
+export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose, keys, onKeysChange }) => {
+  const [localKeys, setLocalKeys] = useState<ApiKeys>({ openai: '', youtube: '' });
   const [showKeys, setShowKeys] = useState({ openai: false, youtube: false });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      const savedKeys = loadApiKeys();
-      setKeys(savedKeys);
-    }
-  }, [isOpen]);
+    setLocalKeys(keys);
+  }, [keys]);
 
   const handleSave = async () => {
     setLoading(true);
-    try {
-      saveApiKeys(keys);
-      onSave(keys);
+    setError(null);
+    const res = await saveApiKeys(localKeys.openai, localKeys.youtube);
+    if (res.error) {
+      setError(res.error);
+    } else {
+      onKeysChange(localKeys);
       onClose();
-    } catch (error) {
-      console.error('Failed to save API keys:', error);
     }
     setLoading(false);
   };
 
-  const handleKeyChange = (type: keyof ApiKeys, value: string) => {
-    setKeys(prev => ({ ...prev, [type]: value }));
+  const handleDelete = async () => {
+    setLoading(true);
+    setError(null);
+    const res = await deleteApiKeys();
+    if (res.error) {
+      setError(res.error);
+    } else {
+      const emptyKeys = { openai: '', youtube: '' };
+      setLocalKeys(emptyKeys);
+      onKeysChange(emptyKeys);
+      onClose();
+    }
+    setLoading(false);
   };
 
-  const toggleShowKey = (type: keyof ApiKeys) => {
+  const handleSignOut = async () => {
+    setLoading(true);
+    setError(null);
+    const res = await signOut();
+    if (res.error) {
+      setError(res.error);
+    } else {
+      onClose();
+      window.location.reload();
+    }
+    setLoading(false);
+  };
+
+  const handleKeyChange = (type: 'openai' | 'youtube', value: string) => {
+    setLocalKeys(prev => ({ ...prev, [type]: value }));
+  };
+
+  const toggleShowKey = (type: 'openai' | 'youtube') => {
     setShowKeys(prev => ({ ...prev, [type]: !prev[type] }));
   };
 
@@ -67,7 +95,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose, o
             <div className="relative">
               <input
                 type={showKeys.openai ? 'text' : 'password'}
-                value={keys.openai}
+                value={localKeys.openai}
                 onChange={(e) => handleKeyChange('openai', e.target.value)}
                 placeholder="sk-..."
                 className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-youtube-red/20 focus:border-youtube-red transition-colors"
@@ -89,7 +117,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose, o
             <div className="relative">
               <input
                 type={showKeys.youtube ? 'text' : 'password'}
-                value={keys.youtube}
+                value={localKeys.youtube}
                 onChange={(e) => handleKeyChange('youtube', e.target.value)}
                 placeholder="AIza..."
                 className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-youtube-red/20 focus:border-youtube-red transition-colors"
@@ -111,6 +139,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose, o
               • YouTube: <a href="https://console.developers.google.com" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console</a>
             </p>
           </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
         </div>
 
         <div className="flex space-x-3 p-6 border-t border-gray-200">
@@ -122,7 +156,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose, o
           </button>
           <button
             onClick={handleSave}
-            disabled={loading || !keys.openai.trim() || !keys.youtube.trim()}
+            disabled={loading || (!localKeys.openai.trim() && !localKeys.youtube.trim())}
             className="flex-1 px-4 py-2 bg-youtube-red text-white rounded-lg font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
           >
             {loading ? (
@@ -133,6 +167,20 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose, o
                 <span>保存</span>
               </>
             )}
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={loading}
+            className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+          >
+            削除
+          </button>
+          <button
+            onClick={handleSignOut}
+            disabled={loading}
+            className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+          >
+            ログアウト
           </button>
         </div>
       </div>
